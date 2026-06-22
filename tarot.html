@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>塔罗牌占卜 · 星座物语</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Serif SC','SimSun',serif;background:#0a0a1a;color:#e0d5c1;min-height:100vh;overflow-x:hidden}
+#stars-canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+
+/* Navigation */
+.nav{position:sticky;top:0;z-index:10;background:rgba(10,10,26,.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(201,168,76,.15);display:flex;justify-content:center;gap:4px;padding:6px 8px;flex-wrap:wrap}
+.nav-btn{padding:8px 16px;border-radius:20px;border:1px solid transparent;background:transparent;color:#9a8b7a;cursor:pointer;font-size:.85em;font-family:inherit;transition:all .3s;white-space:nowrap}
+.nav-btn:hover{color:#c9a84c;border-color:rgba(201,168,76,.3)}
+.nav-btn.active{background:#c9a84c;color:#0a0a1a;border-color:#c9a84c}
+
+/* Panels */
+.panel{display:none;padding:20px;max-width:960px;margin:0 auto;position:relative;z-index:1}
+.panel.active{display:block;animation:fadeIn .4s ease}
+
+/* Header */
+.hero{text-align:center;padding:30px 20px 10px;position:relative;z-index:1}
+.hero h1{font-size:2.6em;background:linear-gradient(135deg,#c9a84c,#f0d878,#c9a84c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:.08em}
+.hero .sub{color:#9a8b7a;font-size:1em;margin-top:6px;letter-spacing:.08em}
+
+/* Zodiac Cards */
+.zodiac-grid{display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin:20px 0}
+.zodiac-card{border-radius:18px;padding:28px 24px;width:320px;cursor:pointer;transition:all .35s;border:1px solid rgba(201,168,76,.2);background:rgba(255,255,255,.03);text-align:center}
+.zodiac-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.3);border-color:#c9a84c}
+.zodiac-card .zc-emoji{font-size:3.5em;margin-bottom:6px}
+.zodiac-card .zc-name{font-size:1.4em;color:#f0d878;font-weight:700}
+.zodiac-card .zc-element{color:#9a8b7a;font-size:.85em;margin:4px 0}
+.zodiac-card .zc-dates{color:#7a6b5a;font-size:.8em}
+.zodiac-card .zc-desc{color:#bfb09e;font-size:.85em;margin-top:10px;line-height:1.6;text-align:justify}
+.zodiac-card .zc-card{display:inline-block;margin-top:10px;padding:4px 14px;border-radius:14px;background:rgba(201,168,76,.12);color:#c9a84c;font-size:.8em}
+.zodiac-card.aries{border-left:3px solid #e74c3c}
+.zodiac-card.scorpio{border-left:3px solid #8e44ad}
+
+/* Compatibility */
+.compat-box{background:rgba(255,255,255,.04);border:1px solid #4a3a6a;border-radius:16px;padding:24px;margin:24px 0;text-align:center;line-height:1.9}
+.compat-box h3{color:#c9a84c;margin-bottom:12px}
+.compat-box p{color:#bfb09e}
+
+/* Mode switch */
+.mode-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:16px 0}
+.mode-tag{padding:8px 20px;border-radius:22px;border:1px solid #4a3a6a;background:transparent;color:#9a8b7a;cursor:pointer;font-size:.88em;font-family:inherit;transition:all .3s}
+.mode-tag:hover,.mode-tag.active{border-color:#c9a84c;color:#c9a84c;background:rgba(201,168,76,.08)}
+.mode-tag.active{background:rgba(201,168,76,.16);color:#f0d878}
+
+/* Question */
+.q-row{text-align:center;margin:16px 0}
+.q-row input{width:100%;max-width:480px;padding:11px 18px;border-radius:26px;border:1px solid #4a3a6a;background:rgba(255,255,255,.05);color:#e0d5c1;font-size:.95em;font-family:inherit;text-align:center;outline:none;transition:border-color .3s}
+.q-row input:focus{border-color:#c9a84c;box-shadow:0 0 14px rgba(201,168,76,.15)}
+
+/* Draw button */
+.draw-btn{display:block;margin:18px auto;padding:13px 44px;border-radius:30px;border:none;background:linear-gradient(135deg,#c9a84c,#a08030);color:#0a0a1a;font-size:1.1em;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.06em;transition:all .3s;position:relative;z-index:1;box-shadow:0 4px 18px rgba(201,168,76,.3)}
+.draw-btn:hover{box-shadow:0 6px 28px rgba(201,168,76,.5);transform:translateY(-2px)}
+.draw-btn:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* Deck area */
+.deck-area{display:flex;justify-content:center;align-items:center;min-height:340px;perspective:1200px;gap:20px;flex-wrap:wrap;margin:10px 0}
+.card{width:170px;height:284px;position:relative;transform-style:preserve-3d;transition:transform .8s cubic-bezier(.4,0,.2,1);cursor:pointer;border-radius:14px}
+.card:hover{transform:translateY(-6px)}
+.card.flipped{transform:rotateY(180deg);cursor:default}
+.card.flipped:hover{transform:rotateY(180deg)}
+.card-face{position:absolute;width:100%;height:100%;backface-visibility:hidden;border-radius:14px;overflow:hidden}
+.card-back{background:linear-gradient(145deg,#1a1040,#2d1b69);border:2px solid #c9a84c;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,.5),inset 0 0 50px rgba(201,168,76,.08)}
+.card-back .si{font-size:3.6em;opacity:.8;filter:drop-shadow(0 0 10px rgba(201,168,76,.45))}
+.card-back .bt{color:#c9a84c;font-size:.78em;letter-spacing:.18em;opacity:.65}
+.card-back::before{content:'';position:absolute;inset:8px;border:1px solid rgba(201,168,76,.25);border-radius:8px}
+.card-back::after{content:'';position:absolute;inset:16px;border:1px solid rgba(201,168,76,.12);border-radius:8px}
+.card-front{background:linear-gradient(160deg,#1a1040,#0d0d2b 50%,#1a1040);border:2px solid #c9a84c;transform:rotateY(180deg);display:flex;flex-direction:column;padding:16px 12px;box-shadow:0 8px 32px rgba(0,0,0,.5);overflow-y:auto}
+.card-front .cn{font-size:.65em;color:#c9a84c;letter-spacing:.08em}
+.card-front .ct{font-size:1.15em;font-weight:700;color:#f0d878;margin:3px 0;letter-spacing:.04em}
+.card-front .ce{font-size:2.2em;text-align:center;margin:2px 0}
+.card-front .ck{font-size:.75em;color:#9a8b7a;text-align:center;font-style:italic;margin-bottom:6px}
+.card-front .cm{font-size:.68em;color:#bfb09e;line-height:1.65;text-align:justify;flex:1}
+.card-front .cextra{font-size:.62em;color:#c9a84c;text-align:center;margin-top:6px;border-top:1px solid rgba(201,168,76,.15);padding-top:5px}
+
+/* Spreads */
+.spread-xs .card{width:135px;height:225px}
+.spread-xs .card .card-front{padding:10px 8px}
+.spread-xs .card .card-front .ct{font-size:.95em}
+.spread-xs .card .card-front .ce{font-size:1.6em}
+.spread-xs .card .card-front .cm{font-size:.6em;line-height:1.5}
+.spread-label{text-align:center;color:#c9a84c;font-size:.8em;margin-top:8px;letter-spacing:.04em}
+
+.celtic-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;justify-items:center;max-width:680px;margin:0 auto}
+.celtic-grid .card{width:120px;height:200px}
+.celtic-grid .card .card-front{padding:8px 6px}
+.celtic-grid .card .card-front .ct{font-size:.82em}
+.celtic-grid .card .card-front .ce{font-size:1.3em}
+.celtic-grid .card .card-front .cm{font-size:.56em;line-height:1.4}
+.celtic-grid .pos-label{grid-column:span 1;text-align:center;color:#c9a84c;font-size:.75em;margin-top:4px}
+
+/* Result */
+.result-section{display:none;margin-top:20px;animation:fadeIn .6s ease}
+.result-section.show{display:block}
+.interp-box{background:rgba(255,255,255,.04);border:1px solid #4a3a6a;border-radius:16px;padding:24px;text-align:center;line-height:1.9}
+.interp-box h3{color:#c9a84c;font-size:1.1em;margin-bottom:10px}
+.interp-box p{color:#bfb09e;font-size:.92em;margin:5px 0}
+.reset-link{display:inline-block;margin-top:18px;color:#c9a84c;cursor:pointer;text-decoration:underline;font-size:.85em;letter-spacing:.04em}
+.reset-link:hover{color:#f0d878}
+
+/* Play guide */
+.guide-section{line-height:2}
+.guide-section h2{color:#f0d878;font-size:1.3em;margin:24px 0 10px;text-align:center}
+.guide-section h3{color:#c9a84c;font-size:1.05em;margin:16px 0 6px}
+.guide-section p,.guide-section li{color:#bfb09e;font-size:.9em}
+.guide-section ul{padding-left:20px}
+.guide-step{background:rgba(255,255,255,.03);border-radius:12px;padding:18px;margin:12px 0;border-left:3px solid #c9a84c}
+.guide-step .step-num{display:inline-block;width:24px;height:24px;border-radius:12px;background:#c9a84c;color:#0a0a1a;text-align:center;line-height:24px;font-weight:700;font-size:.8em;margin-right:8px}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:640px){
+  .hero h1{font-size:1.8em}
+  .zodiac-card{width:100%;max-width:320px}
+  .card{width:130px;height:217px}
+  .spread-xs .card{width:105px;height:175px}
+  .celtic-grid{grid-template-columns:repeat(2,1fr);gap:6px}
+  .celtic-grid .card{width:100px;height:166px}
+}
+</style>
+</head>
+<body>
+<canvas id="stars-canvas"></canvas>
+
+<nav class="nav">
+  <button class="nav-btn active" data-panel="home">首页</button>
+  <button class="nav-btn" data-panel="zodiac">星座物语</button>
+  <button class="nav-btn" data-panel="tarot">塔罗占卜</button>
+  <button class="nav-btn" data-panel="guide">玩法指南</button>
+</nav>
+
+<!-- Home -->
+<div class="panel active" id="panel-home">
+  <div class="hero"><h1>塔罗牌占卜</h1><div class="sub">探索命运 · 聆听星辰的低语</div></div>
+  <div style="max-width:700px;margin:0 auto;text-align:center;line-height:2.2;padding:20px">
+    <p style="font-size:1.1em;color:#e0d5c1">🃏 22张大阿尔卡纳，揭示你的人生密码</p>
+    <p style="color:#9a8b7a">✨ 融入星座能量，让白羊和天蝎的星光照亮前路</p>
+    <p style="color:#7a6b5a;font-size:.85em">每日一牌 · 三张牌阵 · 凯尔特十字 · 星座专属解读</p>
+    <div style="display:flex;gap:20px;justify-content:center;margin-top:28px;flex-wrap:wrap">
+      <div class="zodiac-card aries" onclick="switchPanel('zodiac')" style="width:260px">
+        <div class="zc-emoji">♈</div><div class="zc-name">白羊座</div>
+        <div class="zc-element">🔥 火象 · 火星守护</div>
+        <div class="zc-dates">3月21日 - 4月19日</div>
+        <div class="zc-desc">勇敢无畏的开拓者</div>
+        <div class="zc-card">🃏 对应塔罗牌：皇帝</div>
+      </div>
+      <div class="zodiac-card scorpio" onclick="switchPanel('zodiac')" style="width:260px">
+        <div class="zc-emoji">♏</div><div class="zc-name">天蝎座</div>
+        <div class="zc-element">💧 水象 · 冥王星守护</div>
+        <div class="zc-dates">10月24日 - 11月22日</div>
+        <div class="zc-desc">深邃神秘的重生者</div>
+        <div class="zc-card">🃏 对应塔罗牌：死神</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Zodiac -->
+<div class="panel" id="panel-zodiac">
+  <div class="hero"><h1>星座物语</h1><div class="sub">星辰与塔罗的交织</div></div>
+  <div class="zodiac-grid" id="zodiac-grid"></div>
+  <div style="max-width:700px;margin:0 auto">
+    <div class="compat-box" id="compat-box"></div>
+    <div style="text-align:center;margin:16px 0 30px">
+      <button class="draw-btn" onclick="switchPanel('tarot');document.getElementById('zodiac-mode').value='aries'">♈ 白羊专属占卜</button>
+      <button class="draw-btn" style="background:linear-gradient(135deg,#8e44ad,#6c3483);margin-left:14px" onclick="switchPanel('tarot');document.getElementById('zodiac-mode').value='scorpio'">♏ 天蝎专属占卜</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tarot -->
+<div class="panel" id="panel-tarot">
+  <div class="hero"><h1>塔罗占卜</h1><div class="sub">静心凝神，默念你的问题</div></div>
+  <div class="mode-row">
+    <button class="mode-tag active" data-spread="daily">☀️ 每日一牌</button>
+    <button class="mode-tag" data-spread="single">🃏 单张抽牌</button>
+    <button class="mode-tag" data-spread="three">✨ 三张牌阵</button>
+    <button class="mode-tag" data-spread="celtic">✝️ 凯尔特十字</button>
+  </div>
+  <div class="q-row">
+    <input type="text" id="user-question" placeholder="默念你的问题，然后抽牌…" maxlength="100">
+  </div>
+  <div style="text-align:center;margin-bottom:6px">
+    <select id="zodiac-mode" style="padding:6px 14px;border-radius:16px;border:1px solid #4a3a6a;background:rgba(255,255,255,.05);color:#c9a84c;font-family:inherit;font-size:.82em;outline:none">
+      <option value="">通用解读</option>
+      <option value="aries">♈ 白羊座专属</option>
+      <option value="scorpio">♏ 天蝎座专属</option>
+    </select>
+  </div>
+  <button class="draw-btn" id="draw-btn">🌟 抽取塔罗牌</button>
+  <div class="deck-area" id="deck-area"></div>
+  <div class="result-section" id="result-section"><div class="interp-box" id="interp"></div></div>
+</div>
+
+<!-- Guide -->
+<div class="panel guide-section" id="panel-guide">
+  <div class="hero"><h1>玩法指南</h1></div>
+  <div style="max-width:700px;margin:0 auto">
+    <div class="guide-step"><span class="step-num">1</span><strong style="color:#f0d878">静心凝神</strong> — 找一个安静的地方，深呼吸三次，清空杂念。</div>
+    <div class="guide-step"><span class="step-num">2</span><strong style="color:#f0d878">默念问题</strong> — 在心中默念你想问的问题。可以是关于爱情、事业、人生方向。</div>
+    <div class="guide-step"><span class="step-num">3</span><strong style="color:#f0d878">选择星座模式</strong> — 如果你是白羊座或天蝎座，选择专属解读会更精准。</div>
+    <div class="guide-step"><span class="step-num">4</span><strong style="color:#f0d878">选择牌阵</strong> — 不同牌阵适合不同问题。</div>
+    <div class="guide-step"><span class="step-num">5</span><strong style="color:#f0d878">点击抽牌</strong> — 集中意念，点击按钮，宇宙会给你答案。</div>
+
+    <h2>🃏 牌阵说明</h2>
+    <h3>☀️ 每日一牌</h3>
+    <p>适合每天早上抽取，给自己当天的指引和提醒。简单快速，一目了然。</p>
+    <h3>🃏 单张抽牌</h3>
+    <p>适合具体问题的直接回答。心中默念问题，抽一张牌获得指引。</p>
+    <h3>✨ 三张牌阵</h3>
+    <p><span style="color:#c9a84c">过去</span> → 影响现状的过去因素 | <span style="color:#c9a84c">现在</span> → 当前状况的核心 | <span style="color:#c9a84c">未来</span> → 可能的发展方向</p>
+    <h3>✝️ 凯尔特十字</h3>
+    <p>10张牌的经典牌阵，全面解读一个问题的方方面面。从上到下、从左到右：核心·阻碍·过去·未来·目标·态度·环境·希望·结果。</p>
+
+    <h2>♈♏ 星座与塔罗</h2>
+    <p>每张大阿尔卡纳都与特定的星座、行星和元素相关联。白羊座对应皇帝牌（火星·火象），代表领导力和开创精神；天蝎座对应死神牌（冥王星·水象），代表转化和重生。选择你的星座可以获得更个性化的解读。</p>
+
+    <h2>⚠️ 温馨提示</h2>
+    <p>塔罗牌是自我反思和探索的工具，并非绝对的命运预言。牌面解读仅供参考，请保持理性，以乐观积极的心态面对生活。你的未来，掌握在自己手中。</p>
+  </div>
+</div>
+
+<script>
+const MAJOR_ARCANA=[{"id": 0, "name": "愚者", "emoji": "🌟", "element": "风", "planet": "天王星", "zodiac": "", "keyword": "新的开始·冒险·天真", "upright": "你正站在新旅程的起点。保持开放心态，勇敢迈出第一步。宇宙在保护你。", "reversed": "你害怕改变或在冲动行事。停下来审视现实，不要因恐惧错失机会。"}, {"id": 1, "name": "魔术师", "emoji": "🪄", "element": "风", "planet": "水星", "zodiac": "", "keyword": "创造力·意志力·行动", "upright": "你拥有实现目标所需的一切资源。集中意志，将梦想化为现实。", "reversed": "你在滥用能力或感到无能为力。检查动机，确保行动与内心一致。"}, {"id": 2, "name": "女祭司", "emoji": "🌙", "element": "水", "planet": "月亮", "zodiac": "", "keyword": "直觉·潜意识·神秘", "upright": "相信直觉。答案在你内心深处。静下来倾听内在声音。", "reversed": "你忽略了直觉或被表面信息迷惑。重新连接内在智慧。"}, {"id": 3, "name": "女皇", "emoji": "👑", "element": "土", "planet": "金星", "zodiac": "", "keyword": "丰饶·母性·感官", "upright": "丰收与滋养的时期来临。关注身心需求，创造力蓬勃生长。", "reversed": "你忽视了自我照顾或过度依赖他人。找回内在平衡。"}, {"id": 4, "name": "皇帝", "emoji": "🏛️", "element": "火", "planet": "火星", "zodiac": "白羊座", "keyword": "权威·结构·稳定", "upright": "建立秩序和纪律的时刻。承担责任，用理性结构达成目标。", "reversed": "过于专制或僵化。审视权力角色，找到弹性。", "aries_upright": "白羊座的你与皇帝牌有强烈共鸣！火星守护的能量正在你体内燃烧。这是主动出击、掌控局面的最佳时机。用你天生的领导力开创属于你的王国。"}, {"id": 5, "name": "教皇", "emoji": "📿", "element": "土", "planet": "", "zodiac": "金牛座", "keyword": "传统·信仰·指引", "upright": "寻求智慧建议或遵循传统路径。可能遇到导师，回到根本信念。", "reversed": "盲目追随教条或拒绝有益指引。质疑但不全盘否定。"}, {"id": 6, "name": "恋人", "emoji": "💕", "element": "风", "planet": "", "zodiac": "双子座", "keyword": "爱情·选择·和谐", "upright": "重要的关系或选择摆在面前。听从内心，真诚沟通。", "reversed": "面临艰难抉择或关系中不和谐。诚实面对真实感受。"}, {"id": 7, "name": "战车", "emoji": "⚔️", "element": "水", "planet": "", "zodiac": "巨蟹座", "keyword": "胜利·意志力·掌控", "upright": "通过决心和自律克服障碍。保持专注，胜利在望。", "reversed": "失去方向或被情绪左右。重新调整，不被混乱带偏。"}, {"id": 8, "name": "力量", "emoji": "🦁", "element": "火", "planet": "", "zodiac": "狮子座", "keyword": "勇气·耐心·内在力", "upright": "你拥有克服挑战的内在力量。温柔地坚持，你比想象中更强大。", "reversed": "感到脆弱或失控。重新连接内在勇气和自信。"}, {"id": 9, "name": "隐士", "emoji": "🏮", "element": "土", "planet": "", "zodiac": "处女座", "keyword": "内省·独处·智慧", "upright": "退隐内省时期。独处找到真正答案，灵魂光芒会指引你。", "reversed": "陷入孤独或逃避。独处是为成长而非躲藏。"}, {"id": 10, "name": "命运之轮", "emoji": "🎡", "element": "火", "planet": "木星", "zodiac": "", "keyword": "命运·转变·循环", "upright": "重大转变正在发生。命运之轮转动，顺势而为。", "reversed": "感觉运气不佳或抗拒变化。接受无常，从循环中学习。"}, {"id": 11, "name": "正义", "emoji": "⚖️", "element": "风", "planet": "", "zodiac": "天秤座", "keyword": "公正·真相·因果", "upright": "真相显现，公正伸张。诚实面对自己，做出合乎道德的选择。", "reversed": "存在不公或逃避责任。审视行为，承担后果。"}, {"id": 12, "name": "倒吊人", "emoji": "🙃", "element": "水", "planet": "海王星", "zodiac": "", "keyword": "牺牲·换个角度·放下", "upright": "暂停和放手。换个角度看问题，放下控制迎来领悟。", "reversed": "无谓牺牲或抗拒放手。你的坚持是在帮助还是阻碍你。"}, {"id": 13, "name": "死神", "emoji": "💀", "element": "水", "planet": "冥王星", "zodiac": "天蝎座", "keyword": "结束·转变·重生", "upright": "一个阶段正在结束，为新开始腾出空间。这是蜕变的开始。", "reversed": "抗拒必要改变，死抓过去。允许转变发生，释放旧我。", "scorpio_upright": "天蝎座的你与死神牌深度共振！冥王星的能量赋予你毁灭与重生的力量。你天生懂得深渊的意义——每一次结束都是蜕变的序章。拥抱这种转化，你将如凤凰般浴火重生。"}, {"id": 14, "name": "节制", "emoji": "🌊", "element": "火", "planet": "", "zodiac": "射手座", "keyword": "平衡·调和·耐心", "upright": "通过平衡和适度找到和谐。不急不躁，一切在恰当时间展开。", "reversed": "处于失衡状态。需要找到中间道路，避免极端行为。"}, {"id": 15, "name": "恶魔", "emoji": "😈", "element": "土", "planet": "", "zodiac": "摩羯座", "keyword": "束缚·欲望·阴影", "upright": "在某些方面被束缚。意识到枷锁，你有力量挣脱。", "reversed": "正在挣脱束缚或拒绝面对阴暗面。需要真正自知之明。"}, {"id": 16, "name": "高塔", "emoji": "🗼", "element": "火", "planet": "火星", "zodiac": "", "keyword": "剧变·觉醒·释放", "upright": "突然变故是必要的清理。旧结构崩塌，为真理腾出空间。", "reversed": "避免不可避免的改变或压抑情绪。顺势而为。"}, {"id": 17, "name": "星星", "emoji": "⭐", "element": "风", "planet": "", "zodiac": "水瓶座", "keyword": "希望·疗愈·灵感", "upright": "暴风雨后的宁静。希望和灵感重新照耀，疗愈正在发生。", "reversed": "失去希望或感到绝望。星星光芒从未消失，只是暂时被遮。"}, {"id": 18, "name": "月亮", "emoji": "🌑", "element": "水", "planet": "", "zodiac": "双鱼座", "keyword": "幻象·恐惧·潜意识", "upright": "事物并非表面那样。面对恐惧和潜意识暗流，需要直觉。", "reversed": "否认恐惧或从幻觉中醒来。真相带来解脱。"}, {"id": 19, "name": "太阳", "emoji": "☀️", "element": "火", "planet": "太阳", "zodiac": "", "keyword": "快乐·成功·活力", "upright": "光明快乐成功的时期！享受这一刻，表达真实自我。", "reversed": "暂时看不到光明或压抑快乐。太阳从未消失。"}, {"id": 20, "name": "审判", "emoji": "📯", "element": "火", "planet": "冥王星", "zodiac": "", "keyword": "觉醒·召唤·重生", "upright": "更高层面觉醒召唤你。回顾过去做出和解，回应灵魂使命。", "reversed": "逃避自我反省或拒绝重要召唤。拥抱转变。"}, {"id": 21, "name": "世界", "emoji": "🌍", "element": "土", "planet": "土星", "zodiac": "", "keyword": "完成·整合·成就", "upright": "重要周期圆满结束。达成了目标，庆祝旅程，迎接新开始。", "reversed": "接近完成但仍有未了之事。最后步骤至关重要。"}];
+const ZODIAC_INFO={"aries": {"name": "白羊座", "emoji": "♈", "element": "火", "planet": "火星", "dates": "3月21日 - 4月19日", "traits": "勇敢、热情、冲动、有领导力", "card": "皇帝", "desc": "白羊座的你充满活力和勇气，是天生的开拓者。火星的守护赋予你无畏的精神，你习惯主动出击，热爱竞争与挑战。但在冲动时需要多一点耐心，给自己和他人留出空间。"}, "scorpio": {"name": "天蝎座", "emoji": "♏", "element": "水", "planet": "冥王星", "dates": "10月24日 - 11月22日", "traits": "深邃、敏锐、坚韧、富有洞察力", "card": "死神", "desc": "天蝎座的你拥有惊人的洞察力和强大的意志力。冥王星的守护让你能看透表象直达本质，你从不畏惧深渊与黑暗。你的深情和忠诚无与伦比，但请学会放手和信任。"}};
+const COMPAT_TEXT="白羊座（火）与天蝎座（水）的组合充满张力。火遇水，要么蒸汽升腾，要么水火不容。白羊的直率冲动与天蝎的深沉内敛形成鲜明对比。白羊需要学会耐心和深度，天蝎需要学会信任和直接。当你们找到平衡，这将是一段激情澎湃又深刻无比的旅程——白羊点燃天蝎的热情，天蝎赋予白羊灵魂的深度。";
+
+// Stars
+const cv=document.getElementById("stars-canvas"),cx=cv.getContext("2d");
+let st=[];
+function rs(){cv.width=innerWidth;cv.height=innerHeight;st=[];let n=Math.floor(cv.width*cv.height/2800);for(let i=0;i<n;i++)st.push({x:Math.random()*cv.width,y:Math.random()*cv.height,r:Math.random()*1.4+.3,tw:Math.random()*Math.PI*2,sp:Math.random()*.018+.004})}
+rs();addEventListener("resize",rs);
+function ds(){cx.clearRect(0,0,cv.width,cv.height);for(let s of st){s.tw+=s.sp;let a=.25+.75*Math.abs(Math.sin(s.tw));cx.beginPath();cx.arc(s.x,s.y,s.r,0,Math.PI*2);cx.fillStyle="rgba(200,180,140,"+a+")";cx.fill()}requestAnimationFrame(ds)}ds();
+
+// Panel nav
+const panels=document.querySelectorAll(".panel"),navBtns=document.querySelectorAll(".nav-btn");
+function switchPanel(name){
+  panels.forEach(p=>p.classList.remove("active"));
+  navBtns.forEach(b=>b.classList.remove("active"));
+  document.getElementById("panel-"+name).classList.add("active");
+  document.querySelector(`.nav-btn[data-panel="${name}"]`).classList.add("active");
+  if(name==="zodiac")renderZodiac();
+}
+navBtns.forEach(b=>b.addEventListener("click",()=>switchPanel(b.dataset.panel)));
+window.switchPanel=switchPanel;
+
+// Zodiac panel
+function renderZodiac(){
+  let g=document.getElementById("zodiac-grid");
+  if(!g||g.children.length)return;
+  for(let key of ["aries","scorpio"]){
+    let z=ZODIAC_INFO[key],cls=key==="aries"?"aries":"scorpio";
+    g.innerHTML+=`<div class="zodiac-card ${cls}"><div class="zc-emoji">${z.emoji}</div><div class="zc-name">${z.name}</div><div class="zc-element">${z.element==="火"?"🔥":"💧"} ${z.element}象 · ${z.planet}守护</div><div class="zc-dates">${z.dates}</div><div class="zc-desc">${z.desc}</div><div class="zc-card">🃏 对应塔罗牌：${z.card}</div></div>`;
+  }
+  document.getElementById("compat-box").innerHTML=`<h3>♈ × ♏ 白羊座 vs 天蝎座 · 配对解读</h3><p>${COMPAT_TEXT}</p>`;
+}
+renderZodiac();
+
+// Tarot state
+let spread="daily",drawn=!1;
+const deckArea=document.getElementById("deck-area"),drawBtn=document.getElementById("draw-btn"),
+  resultSec=document.getElementById("result-section"),interp=document.getElementById("interp"),
+  qInput=document.getElementById("user-question"),zodiacSel=document.getElementById("zodiac-mode");
+
+document.querySelectorAll(".mode-tag").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll(".mode-tag").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");spread=b.dataset.spread;resetDraw();
+}));
+
+function shuffle(a){let b=[...a];for(let i=b.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b}
+function getCards(n){return shuffle(MAJOR_ARCANA).slice(0,n)}
+function isRev(){return Math.random()<.4}
+
+function getZodiacExtra(c,zodiac){
+  if(zodiac==="aries"&&c.zodiac==="白羊座")return c.aries_upright||"";
+  if(zodiac==="scorpio"&&c.zodiac==="天蝎座")return c.scorpio_upright||"";
+  return "";
+}
+
+function cardHTML(c,label,pos,zodiac){
+  let rev=isRev(),rl=rev?" (逆位)":" (正位)",pn=rev?"逆位":"正位",m=rev?c.reversed:c.upright;
+  let extra=getZodiacExtra(c,zodiac),extraHTML=extra?`<div class="cextra">${zodiac==="aries"?"♈":"♏"} ${extra}</div>`:"";
+  return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+    <div class="card" onclick="flipCard(this)"><div class="card-face card-back"><div class="si">🔮</div><div class="bt">TAROT</div></div>
+    <div class="card-face card-front"><div class="cn">${pn}${c.element?` · ${c.element}`:""}</div><div class="ct">${c.name}${rl}</div><div class="ce">${c.emoji}</div><div class="ck">${c.keyword}</div><div class="cm">${m}</div>${extraHTML}</div></div>
+    ${label?`<div class="spread-label">${label}</div>`:""}</div>`;
+}
+
+function renderDeck(){
+  deckArea.classList.remove("spread-xs","celtic-grid");
+  if(spread==="celtic"){
+    deckArea.innerHTML=`<div class="card" id="card-deck" onclick="flipCard(this)"><div class="card-face card-back"><div class="si">🔮</div><div class="bt">TAROT</div></div><div class="card-face card-front"></div></div>`;
+  }else{
+    deckArea.innerHTML=`<div class="card" id="card-deck" onclick="flipCard(this)"><div class="card-face card-back"><div class="si">🔮</div><div class="bt">TAROT</div></div><div class="card-face card-front"></div></div>`;
+  }
+}
+
+function flipCard(el){if(!el.classList.contains("flipped"))el.classList.add("flipped")}
+window.flipCard=flipCard;
+
+function draw(){
+  if(drawn)return;drawn=!0;drawBtn.disabled=!0;resultSec.classList.remove("show");
+  let q=qInput.value.trim(),zod=zodiacSel.value;
+
+  if(spread==="daily"||spread==="single"){
+    let c=getCards(1)[0],rev=isRev(),rl=rev?" (逆位)":" (正位)",pn=rev?"逆位":"正位",m=rev?c.reversed:c.upright;
+    let extra=getZodiacExtra(c,zod),extraT=extra?`<div class="cextra">${zod==="aries"?"♈":"♏"} ${extra}</div>`:"";
+    document.querySelector("#card-deck .card-front").innerHTML=`<div class="cn">${pn}${c.element?` · ${c.element}`:""}${c.planet?` · ${c.planet}`:""}</div><div class="ct">${c.name}${rl}</div><div class="ce">${c.emoji}</div><div class="ck">${c.keyword}</div><div class="cm">${m}</div>${extraT}`;
+    setTimeout(()=>{let ce=document.getElementById("card-deck");if(ce)ce.classList.add("flipped")},400);
+    setTimeout(()=>{
+      let qt=q?`<p style="color:#9a8b7a;margin-bottom:8px">🕯️ 你的问题：${q}</p>`:"";
+      let zodT=zod?`<p style="color:#9a8b7a;font-size:.85em">${zod==="aries"?"♈ 白羊座":"♏ 天蝎座"}专属解读</p>`:"";
+      let tit=spread==="daily"?"☀️ 今日塔罗指引":"🔮 塔罗牌解读";
+      interp.innerHTML=`${qt}${zodT}<h3>${tit}：${c.emoji} ${c.name} ${rl}</h3><p style="color:#c9a84c">${c.keyword}</p><p>${m}</p>${extra?`<p style="color:#c9a84c;font-size:.85em;margin-top:6px">${extra}</p>`:""}<p style="margin-top:12px;color:#7a6b5a;font-size:.82em">✨ 牌面解读仅供参考，请以乐观积极的心态面对生活</p>`;
+      resultSec.classList.add("show");resultSec.scrollIntoView({behavior:"smooth",block:"center"});
+    },1200);
+  }else if(spread==="three"){
+    let cards=getCards(3),labels=["过去","现在","未来"];
+    deckArea.classList.add("spread-xs");
+    deckArea.innerHTML=cards.map((c,i)=>cardHTML(c,labels[i],i,zod)).join("");
+    let els=deckArea.querySelectorAll(".card");els.forEach((el,i)=>setTimeout(()=>el.classList.add("flipped"),500+i*350));
+    setTimeout(()=>{
+      let revs=[isRev(),isRev(),isRev()],qt=q?`<p style="color:#9a8b7a;margin-bottom:10px">🕯️ 你的问题：${q}</p>`:"";
+      let zodT=zod?`<p style="color:#9a8b7a;font-size:.85em">${zod==="aries"?"♈ 白羊座":"♏ 天蝎座"}专属解读</p>`:"";
+      let h=qt+zodT+`<h3>✨ 三张牌阵解读</h3>`;
+      cards.forEach((c,i)=>{
+        let r=revs[i],rl=r?"逆位":"正位",m=r?c.reversed:c.upright;
+        let ex=getZodiacExtra(c,zod);
+        h+=`<p style="margin-top:12px"><span style="color:#c9a84c">${c.emoji} ${c.name} (${rl})</span> — <strong>${labels[i]}</strong></p><p>${m}</p>${ex?`<p style="color:#c9a84c;font-size:.82em">${ex}</p>`:""}`;
+      });
+      h+=`<p style="margin-top:16px;color:#7a6b5a;font-size:.82em">✨ 牌面解读仅供参考，请以乐观积极的心态面对生活</p>`;
+      interp.innerHTML=h;resultSec.classList.add("show");resultSec.scrollIntoView({behavior:"smooth",block:"center"});
+    },2400);
+  }else if(spread==="celtic"){
+    // Celtic Cross: 10 cards
+    let cards=getCards(10);
+    let posLabels=["核心问题","当前阻碍","过去根源","近期未来","意识目标","潜意识","你的态度","外部环境","希望与恐惧","最终结果"];
+    // Show first card as "deck" then reveal all
+    document.querySelector("#card-deck .card-front").innerHTML=`<div style="text-align:center;padding-top:50px;color:#c9a84c;font-size:1.2em">✝️<br>凯尔特十字<br>牌阵准备中…</div>`;
+    let ce=document.getElementById("card-deck");if(ce)ce.classList.add("flipped");
+    setTimeout(()=>{
+      deckArea.classList.add("celtic-grid");
+      deckArea.innerHTML=cards.map((c,i)=>cardHTML(c,`${i+1}.${posLabels[i]}`,i,zod)).join("");
+      let els=deckArea.querySelectorAll(".card");
+      els.forEach((el,i)=>setTimeout(()=>el.classList.add("flipped"),200+i*250));
+      setTimeout(()=>{
+        let revs=Array.from({length:10},()=>isRev());
+        let qt=q?`<p style="color:#9a8b7a;margin-bottom:10px">🕯️ 你的问题：${q}</p>`:"";
+        let zodT=zod?`<p style="color:#9a8b7a;font-size:.85em">${zod==="aries"?"♈ 白羊座":"♏ 天蝎座"}专属解读</p>`:"";
+        let h=qt+zodT+`<h3>✝️ 凯尔特十字 · 十张牌阵解读</h3>`;
+        cards.forEach((c,i)=>{
+          let r=revs[i],rl=r?"逆位":"正位",m=r?c.reversed:c.upright;
+          let ex=getZodiacExtra(c,zod);
+          h+=`<p style="margin-top:10px"><span style="color:#c9a84c">${c.emoji} ${c.name} (${rl})</span> — <strong>${posLabels[i]}</strong></p><p style="font-size:.85em">${m}</p>${ex?`<p style="color:#c9a84c;font-size:.78em">${ex}</p>`:""}`;
+        });
+        h+=`<p style="margin-top:16px;color:#7a6b5a;font-size:.82em">✨ 牌面解读仅供参考，请以乐观积极的心态面对生活</p>`;
+        interp.innerHTML=h;resultSec.classList.add("show");resultSec.scrollIntoView({behavior:"smooth",block:"center"});
+      },4200);
+    },1000);
+  }
+}
+
+function resetDraw(){
+  drawn=!1;drawBtn.disabled=!1;resultSec.classList.remove("show");interp.innerHTML="";
+  deckArea.classList.remove("spread-xs","celtic-grid");renderDeck();
+}
+
+drawBtn.addEventListener("click",draw);
+renderDeck();
+</script>
+</body>
+</html>
